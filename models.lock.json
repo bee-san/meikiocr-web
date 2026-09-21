@@ -1,0 +1,88 @@
+{
+  "$schema": "./docs/models.lock.schema.json",
+  "generatedBy": "tools/fetch-models.mjs",
+  "modelSetId": "meiki-v0-det-a9cffa4-rec-a28cf58",
+  "models": [
+    {
+      "role": "detector",
+      "file": "meiki.text.detect.v0.1.960x544.onnx",
+      "repository": "rtr46/meiki.text.detect.v0",
+      "revision": "a9cffa4f60cbf72ddb87edf19c6f98a01cd042e6",
+      "url": "https://huggingface.co/rtr46/meiki.text.detect.v0/resolve/a9cffa4f60cbf72ddb87edf19c6f98a01cd042e6/meiki.text.detect.v0.1.960x544.onnx",
+      "license": "lgpl-3.0",
+      "sha256": "40b6a016667745cae7d3055929ae3b8b1e7716aac795f5904cd3c2c7c3b8404b",
+      "byteLength": 14503825,
+      "model": {
+        "irVersion": 8,
+        "opset": 16,
+        "producer": "pytorch 2.8.0",
+        "externalData": false
+      },
+      "signature": {
+        "inputs": {
+          "images": "float32[N,3,544,960]",
+          "orig_target_sizes": "int64[N,2]"
+        },
+        "outputs": {
+          "labels": "int64[N,64]",
+          "boxes": "float32[N,64,4]",
+          "scores": "float32[N,64]"
+        }
+      }
+    },
+    {
+      "role": "recognizer-horizontal",
+      "file": "meiki.text.rec.v0.960x32.onnx",
+      "repository": "rtr46/meiki.txt.recognition.v0",
+      "revision": "a28cf5874dc2438ebb1c86336be26bcec51e3375",
+      "url": "https://huggingface.co/rtr46/meiki.txt.recognition.v0/resolve/a28cf5874dc2438ebb1c86336be26bcec51e3375/meiki.text.rec.v0.960x32.onnx",
+      "license": "lgpl-3.0",
+      "sha256": "3e96bc772fbee9717e536a6353032bb944c3382dd2f6960ef4890decda43b000",
+      "byteLength": 18593254,
+      "model": {
+        "irVersion": 8,
+        "opset": 16,
+        "producer": "pytorch 2.8.0",
+        "externalData": false
+      },
+      "signature": {
+        "inputs": {
+          "images": "float32[N,3,32,960]",
+          "orig_target_sizes": "int64[N,2]"
+        },
+        "outputs": {
+          "char_codes": "int32[N,48]",
+          "boxes": "float32[N,48,4]",
+          "scores": "float32[N,48]"
+        }
+      }
+    },
+    {
+      "role": "recognizer-vertical",
+      "file": "meiki.text.rec.v0.vertical.32x480.onnx",
+      "repository": "rtr46/meiki.txt.recognition.v0",
+      "revision": "a28cf5874dc2438ebb1c86336be26bcec51e3375",
+      "url": "https://huggingface.co/rtr46/meiki.txt.recognition.v0/resolve/a28cf5874dc2438ebb1c86336be26bcec51e3375/meiki.text.rec.v0.vertical.32x480.onnx",
+      "license": "lgpl-3.0",
+      "sha256": "2c2a83a23bc3b7e6c63962175f507ecc6c5e85cc174f17bdec37d9bbd0bf895a",
+      "byteLength": 12872961,
+      "model": {
+        "irVersion": 8,
+        "opset": 16,
+        "producer": "pytorch 2.8.0",
+        "externalData": false
+      },
+      "signature": {
+        "inputs": {
+          "images": "float32[N,3,480,32]",
+          "orig_target_sizes": "int64[N,2]"
+        },
+        "outputs": {
+          "char_codes": "int32[N,24]",
+          "boxes": "float32[N,24,4]",
+          "scores": "float32[N,24]"
+        }
+      }
+    }
+  ]
+}

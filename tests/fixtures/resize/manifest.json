@@ -1,0 +1,43 @@
+{
+ "src": "src_73x41.rgba",
+ "sw": 73,
+ "sh": 41,
+ "opencv": "5.0.0",
+ "cases": [
+  {
+   "dw": 960,
+   "dh": 32,
+   "file": "cv_960x32.rgba"
+  },
+  {
+   "dw": 30,
+   "dh": 17,
+   "file": "cv_30x17.rgba"
+  },
+  {
+   "dw": 200,
+   "dh": 45,
+   "file": "cv_200x45.rgba"
+  },
+  {
+   "dw": 146,
+   "dh": 82,
+   "file": "cv_146x82.rgba"
+  },
+  {
+   "dw": 36,
+   "dh": 20,
+   "file": "cv_36x20.rgba"
+  },
+  {
+   "dw": 73,
+   "dh": 32,
+   "file": "cv_73x32.rgba"
+  },
+  {
+   "dw": 500,
+   "dh": 9,
+   "file": "cv_500x9.rgba"
+  }
+ ]
+}

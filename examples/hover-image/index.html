@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>meikiocr-web — hover image example</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 1rem; }
+  #stage { position: relative; display: inline-block; }
+  #stage canvas { display: block; }
+  #boxes { position: absolute; inset: 0; pointer-events: none; }
+  .box { position: absolute; border: 1px solid rgba(0, 200, 255, .6); }
+  .box.active { border-color: #ff0; background: rgba(255, 255, 0, .25); }
+  #out { white-space: pre-wrap; font-size: 1.1rem; }
+</style>
+</head>
+<body>
+<h1>meikiocr-web example</h1>
+<p>Load an image, wait for OCR, then hover characters. No dictionary; this shows hit-test output only.</p>
+<p>
+  <input id="file" type="file" accept="image/*" />
+  <label>Profile <select id="profile"><option value="meikipop-v2">meikipop-v2</option><option value="meikiocr-native">meikiocr-native</option></select></label>
+  <span id="status">idle</span>
+</p>
+<div id="stage"><canvas id="canvas" width="480" height="272"></canvas><div id="boxes"></div></div>
+<pre id="out"></pre>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+# Model binaries are fetched by tools/fetch-models.mjs and verified against models.lock.json
+models/*.onnx
+assets-export/
+tests/fixtures/private/
+*.tgz

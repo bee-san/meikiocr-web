@@ -1,0 +1,18 @@
+# Benchmarks
+
+No numbers are claimed yet. When measuring, record:
+
+- hardware (CPU model, RAM), OS, browser + version
+- `onnxruntime-web` version, model set id (`models.lock.json`), backend, thread count
+- input crop size and profile
+- warm-up procedure (first scan discarded)
+
+Measure separately:
+
+1. cold fetch of assets (network) vs cached initialization (Cache Storage hit → sessions ready)
+2. detector latency, recognizer latency per batch, total `scan` latency (p50/p95)
+3. worker memory if observable (`performance.measureUserAgentSpecificMemory` under isolation)
+4. `buildMeikiPopLayout` + `hitTestMeikiPop` cost for representative layouts (target p95 < 1 ms; verify, do not assume)
+5. teardown/recreate stability (dispose → create ×N without leaks)
+
+The consumer's 500 ms scan interval is a scheduling choice, not a latency claim.

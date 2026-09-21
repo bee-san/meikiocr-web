@@ -1,0 +1,27 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Fetch pinned models (verified against models.lock.json)
+        run: npm run fetch-models
+      - run: npm test
+      - run: npm run build
+      - run: npm run export-assets
+      - name: Pack tarball and install in a clean consumer
+        run: |
+          npm pack
+          mkdir -p /tmp/consumer && cd /tmp/consumer && npm init -y >/dev/null
+          npm install "$GITHUB_WORKSPACE"/meikiocr-web-*.tgz
+          node --input-type=module -e "import { createMeikiOcr, DEFAULTS } from 'meikiocr-web'; import { hitTestMeikiPop } from 'meikiocr-web/meikipop'; console.log(typeof createMeikiOcr, typeof hitTestMeikiPop, DEFAULTS.profile)"

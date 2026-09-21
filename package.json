@@ -1,0 +1,68 @@
+{
+  "name": "meikiocr-web",
+  "version": "0.1.0-alpha.1",
+  "description": "Browser-local Japanese OCR from MeikiOCR ONNX models via ONNX Runtime Web, with MeikiPop-compatible layout and pointer hit-testing helpers.",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meikipop": {
+      "types": "./dist/meikipop.d.ts",
+      "import": "./dist/meikipop.js"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "import": "./dist/worker.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "models.lock.json",
+    "docs",
+    "THIRD_PARTY_NOTICES.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fetch-models": "node tools/fetch-models.mjs",
+    "export-assets": "node tools/export-assets.mjs",
+    "prepack": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bee-san/meikiocr-web.git"
+  },
+  "keywords": [
+    "ocr",
+    "japanese",
+    "onnx",
+    "onnxruntime-web",
+    "meikiocr",
+    "meikipop",
+    "browser",
+    "wasm"
+  ],
+  "dependencies": {
+    "onnxruntime-web": "1.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.2",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3",
+    "vitest": "5.0.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
