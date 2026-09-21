@@ -94,6 +94,14 @@ class Client implements MeikiOcrClient {
   private readyPromise: Promise<ReadyReply> | null = null;
   private restarts = 0;
   private lastFatal: MeikiOcrError | null = null;
+  /** Rejects a pending `start()` (used by dispose). */
+  private rejectReady: ((e: unknown) => void) | null = null;
+  /**
+   * Request the worker is still executing. Set on send, cleared on its result/error.
+   * Stays set after an abort: the ORT run does not stop, so the worker is busy
+   * until it reports; `scan` rejects with BusyError meanwhile (documented).
+   */
+  private workerBusyRequestId: number | null = null;
 
   constructor(opts: MeikiOcrOptions, resolved: ResolvedOptions, factory: WorkerFactory) {
     this.opts = opts;
@@ -115,16 +123,26 @@ class Client implements MeikiOcrClient {
     if (this.readyPromise) return this.readyPromise;
     this.generation++;
     const generation = this.generation;
-    const worker = this.factory();
+    let worker: WorkerLike;
+    try {
+      worker = this.factory();
+    } catch (e) {
+      const err = e instanceof MeikiOcrError ? e : new WorkerCrashedError(`worker factory failed: ${(e as Error)?.message ?? e}`, e);
+      this.lastFatal = err;
+      return Promise.reject(err);
+    }
     this.worker = worker;
+    this.workerBusyRequestId = null;
 
     this.readyPromise = new Promise<ReadyReply>((resolve, reject) => {
       let settled = false;
       const settleReject = (e: unknown) => {
         if (settled) return;
         settled = true;
+        this.rejectReady = null;
         reject(e);
       };
+      this.rejectReady = settleReject;
       worker.onerror = (ev) => {
         const err = new WorkerCrashedError(`worker error: ${ev?.message ?? "unknown"}`);
         this.onFatal(err);
@@ -148,6 +166,7 @@ class Client implements MeikiOcrClient {
         this.handleReply(msg, (r) => {
           if (settled) return;
           settled = true;
+          this.rejectReady = null;
           resolve(r);
         }, settleReject);
       };
@@ -189,6 +208,7 @@ class Client implements MeikiOcrClient {
         onReady(msg);
         break;
       case "result": {
+        if (this.workerBusyRequestId === msg.requestId) this.workerBusyRequestId = null;
         const p = this.pending;
         if (!p || p.requestId !== msg.requestId) return; // unwanted/late result
         if (!isSnapshotShape(msg.snapshot)) {
@@ -208,6 +228,7 @@ class Client implements MeikiOcrClient {
           if (msg.fatal) this.teardownWorker();
           return;
         }
+        if (this.workerBusyRequestId === msg.requestId) this.workerBusyRequestId = null;
         const p = this.pending;
         if (p && p.requestId === msg.requestId) this.settle(p, undefined, err);
         const cc = this.cacheClears.get(msg.requestId);
@@ -251,6 +272,7 @@ class Client implements MeikiOcrClient {
   private teardownWorker(): void {
     const w = this.worker;
     this.worker = null;
+    this.workerBusyRequestId = null;
     if (w) {
       w.onmessage = null;
       w.onerror = null;
@@ -265,6 +287,9 @@ class Client implements MeikiOcrClient {
   async scan(frame: RgbaFrame, options: ScanOptions = {}): Promise<OcrSnapshot> {
     if (this.disposed) throw new DisposedError();
     if (this.pending) throw new BusyError();
+    if (this.workerBusyRequestId !== null) {
+      throw new BusyError("worker is still finishing an aborted scan; retry after it reports");
+    }
     validateFrame(frame, this.resolved.maxInputPixels);
     if (options.signal?.aborted) throw new AbortedError();
 
@@ -283,6 +308,7 @@ class Client implements MeikiOcrClient {
     }
     if (this.disposed) throw new DisposedError();
     if (this.pending) throw new BusyError();
+    if (this.workerBusyRequestId !== null) throw new BusyError("worker is still finishing an aborted scan; retry after it reports");
     if (options.signal?.aborted) throw new AbortedError();
 
     const requestId = this.nextRequestId++;
@@ -311,6 +337,7 @@ class Client implements MeikiOcrClient {
         cleanup();
         origReject(e);
       };
+      this.workerBusyRequestId = requestId;
       this.send({ type: "scan", generation, requestId, frame: payload }, [rgba]);
     });
   }
@@ -333,6 +360,7 @@ class Client implements MeikiOcrClient {
     if (this.disposing) return this.disposing;
     this.disposed = true;
     this.disposing = (async () => {
+      this.rejectReady?.(new DisposedError("Client disposed during initialization."));
       if (this.pending) this.settle(this.pending, undefined, new DisposedError("Client disposed while scan was in flight."));
       for (const [, cc] of this.cacheClears) cc.reject(new DisposedError());
       this.cacheClears.clear();
@@ -350,8 +378,22 @@ class Client implements MeikiOcrClient {
 }
 
 function defaultWorkerFactory(opts: MeikiOcrOptions): WorkerFactory {
+  if (opts.workerFactory) return () => opts.workerFactory!() as unknown as WorkerLike;
+  if (opts.worker) {
+    // A single instance can be started exactly once; a terminated Worker cannot be
+    // revived, so a restart attempt must fail clearly instead of hanging.
+    let used = false;
+    return () => {
+      if (used) {
+        throw new WorkerCrashedError(
+          "the supplied `worker` was terminated after a fatal error and cannot be restarted; pass `workerFactory` to enable bounded restarts",
+        );
+      }
+      used = true;
+      return opts.worker as unknown as WorkerLike;
+    };
+  }
   return () => {
-    if (opts.worker) return opts.worker as unknown as WorkerLike;
     const url = opts.workerUrl ?? new URL("./worker.js", import.meta.url);
     return new Worker(url, { type: "module", name: "meikiocr-web" }) as unknown as WorkerLike;
   };

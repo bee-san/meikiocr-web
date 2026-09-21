@@ -80,6 +80,23 @@ export function assertSignature(
         `missing inputs=${JSON.stringify(missingIn)} outputs=${JSON.stringify(missingOut)}`,
     );
   }
+  // Audited dtypes/ranks (models.lock.json): images float32 [N,3,H,W], orig_target_sizes int64 [N,2].
+  const meta = (s as { inputMetadata?: readonly { name: string; isTensor: boolean; type?: string; shape?: readonly (number | string)[] }[] }).inputMetadata;
+  if (Array.isArray(meta)) {
+    const expect: Record<string, { type: string; rank: number }> = {
+      images: { type: "float32", rank: 4 },
+      orig_target_sizes: { type: "int64", rank: 2 },
+    };
+    for (const m of meta) {
+      const want = expect[m.name];
+      if (!want || !m.isTensor) continue;
+      if (m.type !== want.type || (m.shape && m.shape.length !== want.rank)) {
+        throw new ModelSignatureError(
+          `${label}: input '${m.name}' is ${m.type}${m.shape ? `[${m.shape.join(",")}]` : ""}, expected ${want.type} rank ${want.rank}`,
+        );
+      }
+    }
+  }
 }
 
 export const SIGNATURES = Object.freeze({

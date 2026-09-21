@@ -45,5 +45,7 @@ Reference: `rtr46/meikipop@ed1b70c40f38a6bd397e277ed4106c26d34dab97`,
 ## Known limits
 
 - Horizontal recognizer capacity is 48 candidates; saturation is flagged in `diagnostics.warnings`.
-- Fixture coverage for vertical text is synthetic (layout) and unit-level (segmentation); native vertical recognition fixtures should be added.
+- Vertical recognition parity is verified on three native fixtures (single column, two columns, a 720-px column that forces the 420/64 segmentation) in Node and in Chromium/Firefox. Real-game vertical text remains untested.
+- Recognizer preprocessing clamps resized dimensions to ≥ 1 px (`preprocess.ts`); the reference would raise on a zero-sized crop instead. Detector boxes are clipped before cropping so this only affects degenerate inputs.
+- Candidate box mapping reproduces numpy float32 arithmetic (`Math.fround` per operation) before `int()` truncation; double precision differed on ~0.05 % of integer outputs.
 - Confidence values differ from the native CPU EP by up to ~2e-3 (kernel differences); recorded tolerance, not broadened.

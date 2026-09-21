@@ -2,6 +2,8 @@ import { MODEL_DIMS, NMS, SWAPPED_PAIRS } from "../defaults.js";
 import type { OcrGlyph, OcrLine, Orientation, Rect } from "../api/types.js";
 import type { CropMeta } from "../image/preprocess.js";
 
+const f32 = Math.fround;
+
 export interface RecognitionOutputs {
   /** Per batch item: K code points (int32/int64 acceptable). */
   labels: ArrayLike<number> | BigInt64Array;
@@ -76,10 +78,12 @@ export function buildCandidates(
         if (rx1 >= effW) continue;
         rx1 = Math.min(rx1, effW);
         rx2 = Math.min(rx2, effW);
-        const cx1 = (rx1 / effW) * cropW;
-        const cx2 = (rx2 / effW) * cropW;
-        const cy1 = (ry1 / MODEL_DIMS.REC_HEIGHT) * cropH;
-        const cy2 = (ry2 / MODEL_DIMS.REC_HEIGHT) * cropH;
+        // Reference arithmetic is numpy float32 (box rows are float32; ints are weak
+        // scalars), so round every intermediate to float32 before truncation.
+        const cx1 = f32(f32(rx1 / effW) * cropW);
+        const cx2 = f32(f32(rx2 / effW) * cropW);
+        const cy1 = f32(f32(ry1 / MODEL_DIMS.REC_HEIGHT) * cropH);
+        const cy2 = f32(f32(ry2 / MODEL_DIMS.REC_HEIGHT) * cropH);
         const ax1 = gx1 + Math.trunc(cx1);
         const ay1 = gy1 + Math.trunc(cy1);
         const ax2 = gx1 + Math.trunc(cx2);
@@ -90,10 +94,10 @@ export function buildCandidates(
         if (ry1 >= effH) continue;
         ry1 = Math.min(ry1, effH);
         ry2 = Math.min(ry2, effH);
-        const cx1 = (rx1 / MODEL_DIMS.VREC_WIDTH) * cropW;
-        const cx2 = (rx2 / MODEL_DIMS.VREC_WIDTH) * cropW;
-        const cy1 = (ry1 / effH) * cropH;
-        const cy2 = (ry2 / effH) * cropH;
+        const cx1 = f32(f32(rx1 / MODEL_DIMS.VREC_WIDTH) * cropW);
+        const cx2 = f32(f32(rx2 / MODEL_DIMS.VREC_WIDTH) * cropW);
+        const cy1 = f32(f32(ry1 / effH) * cropH);
+        const cy2 = f32(f32(ry2 / effH) * cropH);
         const ax1 = gx1 + Math.trunc(cx1);
         const ay1 = gy1 + Math.trunc(cy1);
         const ax2 = gx1 + Math.trunc(cx2);

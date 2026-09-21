@@ -25,3 +25,9 @@ model set `meiki-v0-det-a9cffa4-rec-a28cf58`, profile meikipop-v2, inputs
 200×150 – 800×90 px synthetic fixtures, first scan per client not excluded:
 total `scan` 375–714 ms per fixture (`diagnostics.elapsedMs`). Cold asset fetch
 was from a local HTTP server and is not representative of network conditions.
+
+Second run (same host, 2026-09-21): Chromium 153 headless 380–830 ms per scan
+across 17 fixtures; Firefox 155 headless comparable (not tabulated). The first
+vertical scan includes the lazy vertical-model fetch/initialization (~+350 ms in
+the observed run). No warmup exclusion; single sample per case. These are
+smoke measurements, not benchmarks.

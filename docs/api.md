@@ -38,7 +38,10 @@ hitTestMeikiPop(layout, { x, y } /* image pixels */): TextHit | null
 `MeikiOcrOptions`: `manifest` (AssetManifest), `assetBaseUrl` (must end with `/`),
 `profile`, `execution` (`wasm` | `webgpu` | `auto`), `wasmThreads`, `vertical`
 (`lazy` | `off`), `onProgress`, `recognitionBatchSize`, `maxInputPixels`,
-`persistentCache`, `workerUrl` or `worker`.
+`persistentCache`, and one of `workerFactory` (preferred for bundlers; called for
+the first worker and each bounded restart), `workerUrl`, or `worker` (a single
+instance: after a fatal failure it cannot be restarted and `scan` rejects with
+`WorkerCrashedError`).
 
 Defaults are exported once as `DEFAULTS` and `PROFILES` (import them; do not copy).
 
@@ -70,13 +73,19 @@ Defaults are exported once as `DEFAULTS` and `PROFILES` (import them; do not cop
 `signal.abort()` rejects the caller's promise immediately with `AbortedError` and
 marks the request unwanted in the worker. An in-progress ONNX `run` is not
 interrupted; its result is discarded when it finishes. The worker is not
-recreated for cancellations.
+recreated for cancellations. Until the worker reports that unwanted result, a
+new `scan` rejects with `BusyError` (one active request, no hidden queue); the
+consumer's latest-intent scheduler simply retries on its next opportunity.
 
 ## Fatal failures
 
 A malformed reply, worker `error` event, or fatal worker error terminates the
 worker. The next `scan` recreates it (up to `DEFAULTS.maxWorkerRestarts` times),
-after which `WorkerCrashedError` is returned until `dispose`.
+after which `WorkerCrashedError` is returned until `dispose`. A per-request
+failure (asset fetch during lazy vertical loading, invalid input, an unexpected
+exception that is not a WebAssembly trap) rejects only that request; the worker
+and its sessions stay alive. `dispose()` during a pending (re)initialization
+rejects the waiting callers with `DisposedError`.
 
 ## Diagnostics
 

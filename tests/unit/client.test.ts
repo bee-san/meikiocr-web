@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AssetManifest, OcrSnapshot, ProgressEvent } from "../../src/api/types.js";
-import { createMeikiOcrWithFactory, type WorkerLike } from "../../src/client.js";
+import { createMeikiOcr, createMeikiOcrWithFactory, type WorkerLike } from "../../src/client.js";
 import { AbortedError, BusyError, DisposedError, InvalidInputError, WorkerCrashedError, WorkerProtocolError } from "../../src/errors.js";
 import type { ClientToWorker, WorkerToClient } from "../../src/protocol.js";
 import { DEFAULTS } from "../../src/defaults.js";
@@ -228,5 +228,75 @@ describe("client", () => {
     const client = await createMeikiOcrWithFactory({ manifest, assetBaseUrl: "https://x.test/" }, () => worker);
     await expect(client.scan({ ...frame(), rgba: new ArrayBuffer(3) })).rejects.toBeInstanceOf(InvalidInputError);
     expect(worker.sent.filter((m) => m.type === "scan").length).toBe(0);
+  });
+
+  it("after a fatal error, a supplied single `worker` cannot be restarted: scan rejects clearly instead of hanging", async () => {
+    const worker = new FakeWorker();
+    worker.replyMode = "fatal";
+    const client = await createMeikiOcr({ manifest, assetBaseUrl: "https://x.test/", worker: worker as unknown as Worker });
+    await expect(client.scan(frame())).rejects.toBeInstanceOf(WorkerCrashedError);
+    expect(worker.terminated).toBe(true);
+    const outcome = await Promise.race([
+      client.scan(frame()).then(() => "resolved", (e) => (e instanceof WorkerCrashedError ? "crashed-error" : `other:${String(e)}`)),
+      new Promise((r) => setTimeout(() => r("hung"), 200)),
+    ]);
+    expect(outcome).toBe("crashed-error");
+  });
+
+  it("`workerFactory` enables a bounded restart after a fatal error", async () => {
+    const workers: FakeWorker[] = [];
+    const client = await createMeikiOcr({
+      manifest,
+      assetBaseUrl: "https://x.test/",
+      workerFactory: () => {
+        const w = new FakeWorker();
+        workers.push(w);
+        return w as unknown as Worker;
+      },
+    });
+    workers[0]!.replyMode = "fatal";
+    await expect(client.scan(frame())).rejects.toBeInstanceOf(WorkerCrashedError);
+    const snap = await client.scan(frame());
+    expect(snap.frameId).toBe("f1");
+    expect(workers.length).toBe(2);
+    expect(workers[0]!.terminated).toBe(true);
+  });
+
+  it("dispose during a restart's pending initialization rejects the waiting scan (no hang)", async () => {
+    let n = 0;
+    const client = await createMeikiOcrWithFactory({ manifest, assetBaseUrl: "https://x.test/" }, () => {
+      n++;
+      const w = new FakeWorker();
+      if (n === 1) w.replyMode = "fatal";
+      if (n === 2) {
+        // second worker never answers init
+        w.postMessage = (m: unknown) => void w.sent.push(m as ClientToWorker);
+      }
+      return w;
+    });
+    await expect(client.scan(frame())).rejects.toBeInstanceOf(WorkerCrashedError);
+    const waiting = client.scan(frame()); // triggers restart; init never completes
+    const settled = Promise.race([
+      waiting.then(() => "resolved", (e) => (e instanceof DisposedError ? "disposed" : `other:${String(e)}`)),
+      new Promise((r) => setTimeout(() => r("hung"), 300)),
+    ]);
+    await client.dispose();
+    expect(await settled).toBe("disposed");
+  });
+
+  it("after abort, scan reports BusyError until the worker finishes the aborted run, then works again", async () => {
+    const worker = new FakeWorker();
+    worker.scanDelayMs = 30;
+    const client = await createMeikiOcrWithFactory({ manifest, assetBaseUrl: "https://x.test/" }, () => worker);
+    const ac = new AbortController();
+    const p1 = client.scan(frame(), { signal: ac.signal });
+    await new Promise((r) => setTimeout(r, 0)); // let the request reach the worker
+    ac.abort();
+    await expect(p1).rejects.toBeInstanceOf(AbortedError);
+    expect(worker.sent.some((m) => m.type === "cancel")).toBe(true);
+    await expect(client.scan(frame())).rejects.toBeInstanceOf(BusyError); // worker still running
+    await new Promise((r) => setTimeout(r, 60)); // worker reports the (unwanted) result
+    const snap = await client.scan({ ...frame(), frameId: "f2" });
+    expect(snap.frameId).toBe("f2");
   });
 });

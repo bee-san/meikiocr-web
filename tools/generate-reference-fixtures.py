@@ -46,6 +46,15 @@ CASES = [
     ("border_clipped", [("画面の端に切れた文字", -8, 5, 26, (255, 255, 255))], (300, 40), (0, 0, 0)),
     ("half_integer_resize", [("半端な寸法", 10, 12, 21, (255, 255, 255))], (301, 45), (0, 0, 0)),
     ("swapped_pair_candidate", [("冗談だよ", 20, 30, 28, (255, 255, 255))], (300, 100), (0, 0, 0)),
+    # Vertical text: characters stacked top-to-bottom, columns right-to-left ("V:" prefix).
+    ("vertical_single_column", [("V:静かな夜だった", 60, 16, 26, (255, 255, 255))], (140, 260), (10, 10, 30)),
+    ("vertical_two_columns", [("V:春はあけぼの", 90, 16, 24, (255, 255, 255)), ("V:やうやう白くなりゆく", 40, 16, 24, (255, 255, 255))], (150, 300), (0, 0, 0)),
+    # Vertical text longer than one 480-px recognizer window after scaling (forces 420/64 segmentation).
+    ("vertical_long_segmented", [("V:吾輩は猫である名前はまだ無いどこで生れたかとんと見当がつかぬ", 30, 8, 22, (255, 255, 255))], (90, 720), (0, 0, 0)),
+    # Furigana: small reading above a line (0.65 median-height rule in MeikiPop layout).
+    ("furigana_over_line", [("いっしょうけんめい", 20, 22, 12, (255, 255, 255)), ("一生懸命に走った", 20, 38, 26, (255, 255, 255))], (360, 90), (0, 0, 0)),
+    # More than 48 characters in one line: recognizer capacity saturation must be diagnosed, not invented.
+    ("saturated_60_chars", [("あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをんがぎぐげござじずぜぞ", 6, 22, 16, (255, 255, 255))], (960, 60), (0, 0, 0)),
 ]
 
 
@@ -55,6 +64,11 @@ def render(case, font_path):
     d = ImageDraw.Draw(img)
     for text, x, y, sz, color in lines:
         font = ImageFont.truetype(font_path, sz)
+        if text.startswith("V:"):
+            # Stack characters vertically (one column); x is the column's left edge.
+            for i, ch in enumerate(text[2:]):
+                d.text((x, y + i * int(sz * 1.15)), ch, font=font, fill=color + (255,))
+            continue
         d.text((x, y), text, font=font, fill=color + (255,))
     return img
 

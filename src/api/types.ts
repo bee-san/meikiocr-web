@@ -154,7 +154,18 @@ export interface MeikiOcrOptions {
    * Consumers bundling with Vite/Angular can pass `new URL('meikiocr-web/worker', import.meta.url)`.
    */
   workerUrl?: string | URL;
-  /** Testing hook: supply a pre-constructed Worker instead of creating one. */
+  /**
+   * Preferred for bundlers that need a static `new Worker(new URL(...))` expression
+   * (Angular, Vite, webpack): a factory the client calls for the first worker AND
+   * for each bounded restart after a fatal failure.
+   */
+  workerFactory?: () => Worker;
+  /**
+   * A single pre-constructed Worker. Because a terminated Worker cannot be
+   * restarted, a fatal failure is final for this client: further `scan` calls
+   * reject with `WorkerCrashedError` (code `WORKER_CRASHED`) until it is
+   * re-created by the caller. Prefer `workerFactory`.
+   */
   worker?: Worker;
 }
 

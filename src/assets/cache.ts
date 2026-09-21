@@ -115,7 +115,13 @@ export class AssetCache {
     let loaded = 0;
     let lastReport = 0;
     for (;;) {
-      const { done, value } = await reader.read();
+      let step: ReadableStreamReadResult<Uint8Array>;
+      try {
+        step = await reader.read();
+      } catch (e) {
+        throw new AssetError("ASSET_FETCH_FAILED", `${asset.path}: connection interrupted after ${loaded} of ${total} bytes`, e);
+      }
+      const { done, value } = step;
       if (done) break;
       if (!value) continue;
       if (loaded + value.byteLength > total) {
@@ -148,7 +154,13 @@ export class AssetCache {
   ): Promise<ArrayBuffer> {
     const chunks: Uint8Array[] = [acc];
     for (;;) {
-      const { done, value } = await reader.read();
+      let step: ReadableStreamReadResult<Uint8Array>;
+      try {
+        step = await reader.read();
+      } catch (e) {
+        throw new AssetError("ASSET_FETCH_FAILED", `${asset.path}: connection interrupted after ${loaded} bytes`, e);
+      }
+      const { done, value } = step;
       if (done) break;
       if (value) {
         chunks.push(value);

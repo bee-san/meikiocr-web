@@ -138,6 +138,13 @@ async function handleInit(req: InitRequest): Promise<void> {
 }
 
 /** Lazily load the vertical recognizer on first vertical line. */
+/** WebAssembly traps / aborts leave ORT unusable; other exceptions do not. */
+function isRuntimeTrap(e: unknown): boolean {
+  if (typeof WebAssembly !== "undefined" && e instanceof WebAssembly.RuntimeError) return true;
+  const msg = e instanceof Error ? e.message : String(e);
+  return /abort\(|RuntimeError|memory access out of bounds|unreachable/i.test(msg);
+}
+
 function engineWithLazyVertical(engine: OrtEngine): InferenceEngine {
   if (!state.init || state.init.vertical === "off") {
     return { backend: engine.backend, modelSetId: engine.modelSetId, detect: engine.detect.bind(engine), recognizeHorizontal: engine.recognizeHorizontal.bind(engine) };
@@ -185,7 +192,10 @@ async function handleScan(generation: number, requestId: number, frame: Paramete
     post({ type: "result", generation, requestId, snapshot });
   } catch (e) {
     state.cancelled.delete(requestId);
-    const fatal = !(e instanceof MeikiOcrError) || e.code === "WORKER_CRASHED";
+    // Typed errors (asset, input, aborted...) are per-request. Unknown errors are
+    // reported as INFERENCE_FAILED; they are fatal only if ORT itself is now unusable
+    // (a WASM trap leaves the runtime in an undefined state).
+    const fatal = e instanceof MeikiOcrError ? e.code === "WORKER_CRASHED" : isRuntimeTrap(e);
     fail(generation, e, fatal, requestId);
   } finally {
     state.activeRequestId = null;

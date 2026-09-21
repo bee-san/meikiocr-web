@@ -40,7 +40,7 @@ console.log(hit?.fullText, hit?.utf16Offset, hit?.suffix);
 | Vertical recognizer | Ported incl. 420/64 segmentation; lazy-loaded. Fixture coverage is currently horizontal-heavy (see `docs/meikipop-parity.md`). |
 | MeikiPop layout/hit-test | Ported; exact parity on 20 cases / ~3000 probed points vs upstream code, `tests/parity/meikipop-layout.test.ts`. |
 | Worker/client protocol | Implemented with busy/abort/dispose/malformed-reply/bounded-restart tests (fake worker). |
-| Real browser run | **Verified in headless Chromium** (`npm run test:browser`): real worker, ORT WASM, Cache Storage; 24/24 fixtures match native. Firefox pending (see `docs/browser-support.md`). |
+| Real browser run | **Verified in headless Chromium 153 and Firefox 155** (`npm run test:browser [firefox]`): real worker, ORT WASM, Cache Storage, lazy vertical provisioning; 35/35 cases match native (see `docs/browser-support.md`). |
 | WebGPU | `auto` resolves to `wasm`; explicit `webgpu` attempts it with one controlled fallback. Not yet validated. |
 
 ## Commands

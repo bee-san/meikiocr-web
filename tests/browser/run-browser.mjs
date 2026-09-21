@@ -11,7 +11,15 @@ import { build } from "esbuild";
 import { createServer } from "node:http";
 import { readFileSync, existsSync, createReadStream, statSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
-import { chromium } from "playwright";
+import { chromium, firefox, webkit } from "playwright";
+
+// Usage: node tests/browser/run-browser.mjs [chromium|firefox|webkit]
+const browserName = process.argv[2] ?? "chromium";
+const engine = { chromium, firefox, webkit }[browserName];
+if (!engine) {
+  console.error(`unknown browser '${browserName}'`);
+  process.exit(2);
+}
 
 const root = resolve(".");
 await build({
@@ -46,7 +54,7 @@ await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const port = server.address().port;
 
 const manifest = JSON.parse(readFileSync("tests/fixtures/parity/manifest.json", "utf8"));
-const browser = await chromium.launch();
+const browser = await engine.launch();
 const page = await browser.newPage();
 const logs = [];
 page.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
@@ -57,10 +65,28 @@ await page.waitForFunction(() => window.harnessReady, null, { timeout: 60_000 })
 let failures = 0;
 let total = 0;
 const report = [];
+const verticalAsset = manifest.models?.find?.((m) => m.role === "recognizer-vertical")?.path ?? "vertical";
 for (const profile of ["meikipop-v2", "meikiocr-native"]) {
+  let sawVerticalLoad = false;
   for (const c of manifest.cases) {
     total++;
     const r = await page.evaluate(([n, w, h, p]) => window.runCase(n, w, h, p), [c.name, c.width, c.height, profile]);
+    // Lazy vertical provisioning: the vertical recognizer must only be fetched/initialised
+    // when the first vertical line is encountered, never during initial ready.
+    const verticalEvents = r.progress.filter((e) => e.includes("vertical"));
+    const hasVertical = c.profiles[profile].lines.some((l) => l.isVertical && l.chars.length);
+    if (verticalEvents.length) {
+      if (!hasVertical || sawVerticalLoad) {
+        failures++;
+        console.log(`FAIL [${profile}] ${c.name}: unexpected vertical asset activity ${JSON.stringify(verticalEvents)}`);
+      } else {
+        console.log(`  lazy vertical load observed on first vertical case (${c.name}): ${verticalEvents.length} progress events`);
+      }
+      sawVerticalLoad = true;
+    } else if (hasVertical && !sawVerticalLoad) {
+      failures++;
+      console.log(`FAIL [${profile}] ${c.name}: vertical result without observed vertical provisioning`);
+    }
     const refLines = c.profiles[profile].lines.filter((l) => l.chars.length > 0);
     const ok =
       JSON.stringify(r.lines.map((l) => l.text)) === JSON.stringify(refLines.map((l) => l.text)) &&
@@ -70,8 +96,32 @@ for (const profile of ["meikipop-v2", "meikiocr-native"]) {
     console.log(`${ok ? "PASS" : "FAIL"} [${profile}] ${c.name} (${Math.round(r.elapsedMs)} ms, ${r.backend}, coi=${r.crossOriginIsolated}) ${r.lines.map((l) => l.text).join(" | ")}`);
   }
 }
+// vertical: "off" must yield an empty, successful snapshot with a visible diagnostic.
+{
+  const vc = manifest.cases.find((c) => c.name === "vertical_single_column");
+  const r = await page.evaluate(([n, w, h]) => window.runVerticalOff(n, w, h), [vc.name, vc.width, vc.height]);
+  const ok = r.lines === 0 && r.warnings.some((w) => /vertical recognition disabled/.test(w)) && r.assetsTouched.length === 0;
+  total++;
+  if (!ok) failures++;
+  console.log(`${ok ? "PASS" : "FAIL"} vertical:"off" -> lines=${r.lines} warnings=${JSON.stringify(r.warnings)} verticalAssetsTouched=${r.assetsTouched.length}`);
+}
+// Optional variants (reported, not gated): 2 WASM threads under COI; WebGPU request.
+{
+  const c = manifest.cases.find((x) => x.name === "white_on_dark_single");
+  const ref = c.profiles["meikipop-v2"].lines.map((l) => l.chars.map((ch) => ch.char).join(""));
+  for (const opts of [{ execution: "wasm", wasmThreads: 2 }, { execution: "webgpu", wasmThreads: 1 }]) {
+    try {
+      const r = await page.evaluate(([n, w, h, o]) => window.runVariant(n, w, h, o), [c.name, c.width, c.height, opts]);
+      const same = JSON.stringify(r.text) === JSON.stringify(ref);
+      console.log(`VARIANT ${JSON.stringify(opts)} -> backend=${r.backend} ready="${r.ready}" text ${same ? "matches" : "DIFFERS"}`);
+    } catch (e) {
+      console.log(`VARIANT ${JSON.stringify(opts)} -> error: ${e.message.split("\n")[0]}`);
+    }
+  }
+}
+const browserVersion = browser.version();
 await browser.close();
 server.close();
 if (logs.length) console.log("browser console:\n" + logs.join("\n"));
-console.log(`\n${total - failures}/${total} browser cases match the native reference (Chromium ${chromium.name()} via Playwright).`);
+console.log(`\n${total - failures}/${total} browser cases match the native reference (${browserName} ${browserVersion} via Playwright).`);
 process.exit(failures ? 1 : 0);
