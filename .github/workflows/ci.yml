@@ -1,7 +1,7 @@
 name: ci
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
 jobs:
   test:
@@ -19,6 +19,12 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run export-assets
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium firefox
+      - name: Real-browser inference vs native reference (Chromium)
+        run: npm run test:browser
+      - name: Real-browser inference vs native reference (Firefox)
+        run: npm run test:browser -- firefox
       - name: Pack tarball and install in a clean consumer
         run: |
           npm pack
