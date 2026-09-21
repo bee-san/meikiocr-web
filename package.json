@@ -4,7 +4,9 @@
   "description": "Browser-local Japanese OCR from MeikiOCR ONNX models via ONNX Runtime Web, with MeikiPop-compatible layout and pointer hit-testing helpers.",
   "license": "GPL-3.0-only",
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/worker.js"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
