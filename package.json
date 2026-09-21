@@ -37,7 +37,8 @@
     "test:watch": "vitest",
     "fetch-models": "node tools/fetch-models.mjs",
     "export-assets": "node tools/export-assets.mjs",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "prepare": "tsup"
   },
   "repository": {
     "type": "git",
