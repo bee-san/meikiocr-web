@@ -96,7 +96,7 @@ describe("AssetCache", () => {
 
   it("rejects bytes whose hash does not match with ASSET_INTEGRITY_FAILED and caches nothing", async () => {
     const wrong = bytesA.slice();
-    wrong[3] ^= 1;
+    wrong[3] = (wrong[3] ?? 0) ^ 1;
     const c = new AssetCache({ cacheName: "n", persistent: true, fetchImpl: fakeFetch(wrong).fetch });
     await expect(c.load(asset, "u")).rejects.toMatchObject({ code: "ASSET_INTEGRITY_FAILED" });
     expect((await fakeCaches.open("n") as unknown as FakeCache).store.size).toBe(0);
