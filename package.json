@@ -26,6 +26,9 @@
   },
   "files": [
     "dist",
+    "tools/fetch-models.mjs",
+    "tools/export-assets.mjs",
+    "tools/inspect-models.py",
     "models.lock.json",
     "docs",
     "THIRD_PARTY_NOTICES.md",
