@@ -16,3 +16,12 @@ Measure separately:
 5. teardown/recreate stability (dispose → create ×N without leaks)
 
 The consumer's 500 ms scan interval is a scheduling choice, not a latency claim.
+
+## First measurement (not a target)
+
+2026-09-21, headless Chromium (Playwright 1.63, chromium-1243), Linux x86-64
+cloud desktop, onnxruntime-web 1.30.0 WASM, 1 thread, cross-origin isolated,
+model set `meiki-v0-det-a9cffa4-rec-a28cf58`, profile meikipop-v2, inputs
+200×150 – 800×90 px synthetic fixtures, first scan per client not excluded:
+total `scan` 375–714 ms per fixture (`diagnostics.elapsedMs`). Cold asset fetch
+was from a local HTTP server and is not representative of network conditions.

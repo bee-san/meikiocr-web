@@ -8,3 +8,4 @@ models/*.onnx
 assets-export/
 tests/fixtures/private/
 *.tgz
+tests/browser/dist/

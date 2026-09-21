@@ -43,7 +43,8 @@
     "fetch-models": "node tools/fetch-models.mjs",
     "export-assets": "node tools/export-assets.mjs",
     "prepack": "npm run build",
-    "prepare": "tsup"
+    "prepare": "tsup",
+    "test:browser": "node tests/browser/run-browser.mjs"
   },
   "repository": {
     "type": "git",
@@ -64,6 +65,8 @@
   },
   "devDependencies": {
     "@types/node": "26.6.2",
+    "esbuild": "0.28.2",
+    "playwright": "1.63.0",
     "tsup": "8.5.1",
     "typescript": "5.9.3",
     "vitest": "5.0.1"
