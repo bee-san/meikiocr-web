@@ -119,6 +119,15 @@ for (const profile of ["meikipop-v2", "meikiocr-native"]) {
     }
   }
 }
+if (process.argv.includes("--stress")) {
+  const c = manifest.cases.find((x) => x.name === "colored_text");
+  const r = await page.evaluate(([n, w, h]) => window.runStress(n, w, h), [c.name, c.width, c.height]);
+  console.log("STRESS", JSON.stringify(r));
+  const ok = r.n === 60 && r.aborted > 0 && r.crashCode === "WORKER_CRASHED" && r.restarted && r.dispCode === "DISPOSED" && r.afterDispose === "DISPOSED" && r.silentCode === "WORKER_CRASHED" && r.afterSilent && r.workers2 === 2 && (r.heapDeltaMB === null || r.heapDeltaMB < 30);
+  console.log(`${ok ? "PASS" : "FAIL"} stress/lifecycle: 60 identical scans p50=${Math.round(r.p50)}ms p95=${Math.round(r.p95)}ms heapΔ=${r.heapDeltaMB?.toFixed(1)}MB; ${r.aborted} aborts (${r.busyRetries} busy retries); crash→${r.crashCode}, restarted=${r.restarted} (${r.workersCreated} workers); dispose mid-scan→${r.dispCode}; after dispose→${r.afterDispose}; silent kill→${r.silentCode} after ${r.watchdogMs}ms, recovered=${r.afterSilent}`);
+  if (!ok) failures++;
+  total++;
+}
 const browserVersion = browser.version();
 await browser.close();
 server.close();

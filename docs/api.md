@@ -80,7 +80,9 @@ consumer's latest-intent scheduler simply retries on its next opportunity.
 ## Fatal failures
 
 A malformed reply, worker `error` event, or fatal worker error terminates the
-worker. The next `scan` recreates it (up to `DEFAULTS.maxWorkerRestarts` times),
+worker. A scan with no reply within `scanTimeoutMs` (default 30 s) is treated as a
+hung or silently terminated worker (browsers may kill workers without an error
+event) and rejects with `WorkerCrashedError`. The next `scan` recreates it (up to `DEFAULTS.maxWorkerRestarts` times),
 after which `WorkerCrashedError` is returned until `dispose`. A per-request
 failure (asset fetch during lazy vertical loading, invalid input, an unexpected
 exception that is not a WebAssembly trap) rejects only that request; the worker

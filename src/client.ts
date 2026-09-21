@@ -46,6 +46,7 @@ interface ResolvedOptions {
   maxInputPixels: number;
   persistentCache: boolean;
   runtimeBaseUrl: string;
+  scanTimeoutMs: number;
 }
 
 export function resolveOptions(o: MeikiOcrOptions): ResolvedOptions {
@@ -62,6 +63,7 @@ export function resolveOptions(o: MeikiOcrOptions): ResolvedOptions {
     recognitionBatchSize: Math.max(1, Math.min(batch, DEFAULTS.maxRecognitionBatchSize)),
     maxInputPixels: o.maxInputPixels ?? DEFAULTS.maxInputPixels,
     persistentCache: o.persistentCache ?? DEFAULTS.persistentCache,
+    scanTimeoutMs: o.scanTimeoutMs ?? DEFAULTS.scanTimeoutMs,
     runtimeBaseUrl: o.assetBaseUrl,
   };
 }
@@ -338,6 +340,17 @@ class Client implements MeikiOcrClient {
         origReject(e);
       };
       this.workerBusyRequestId = requestId;
+      if (this.resolved.scanTimeoutMs > 0) {
+        const timer = setTimeout(() => {
+          if (p.settled || this.pending !== p) return;
+          // No reply at all: the worker is hung or was terminated silently. Recreate on next scan.
+          this.onFatal(new WorkerCrashedError(`scan ${requestId} timed out after ${this.resolved.scanTimeoutMs} ms; worker presumed hung`));
+        }, this.resolved.scanTimeoutMs);
+        const prevResolve = p.resolve;
+        const prevReject = p.reject;
+        p.resolve = (snap) => { clearTimeout(timer); prevResolve(snap); };
+        p.reject = (e) => { clearTimeout(timer); prevReject(e); };
+      }
       this.send({ type: "scan", generation, requestId, frame: payload }, [rgba]);
     });
   }

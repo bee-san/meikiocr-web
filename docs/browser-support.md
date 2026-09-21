@@ -12,3 +12,13 @@
 | Safari / mobile | — | Not tested; not claimed. |
 
 Report only what is in this table.
+
+## Stress / lifecycle probe (`npm run test:browser -- --stress`, Chromium 153, 2026-09-21)
+
+60 back-to-back scans of one fixture: identical results every time, p50 490 ms,
+p95 659 ms, main-thread JS heap delta 0.0 MB. 30 randomly aborted scans, each
+followed by a successful scan (BusyError while the worker finishes the aborted
+run, then OK). Worker `error` event mid-scan → `WORKER_CRASHED` → automatic
+restart via `workerFactory` → identical result. Silent `terminate()` mid-scan
+→ watchdog (1.5 s in the probe) → `WORKER_CRASHED` → restart → identical
+result. `dispose()` mid-scan → `DISPOSED`; further scans → `DISPOSED`.

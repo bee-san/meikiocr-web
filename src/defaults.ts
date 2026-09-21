@@ -80,6 +80,8 @@ export const DEFAULTS = Object.freeze({
   cacheName: "meikiocr-web-assets-v1",
   /** Bounded worker restart policy on fatal failures. */
   maxWorkerRestarts: 2,
+  /** Watchdog: a scan with no reply for this long is treated as a hung worker (terminate + bounded restart). */
+  scanTimeoutMs: 30_000,
   /** Consumer-side scheduling default (mirrors MeikiPop auto_scan_interval_seconds). */
   scanIntervalMs: 500,
 });

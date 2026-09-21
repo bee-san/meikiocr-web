@@ -150,6 +150,13 @@ export interface MeikiOcrOptions {
   /** Persistent model cache. Default true when Cache Storage is available. */
   persistentCache?: boolean;
   /**
+   * Hang detection: if the worker has not answered a scan within this many ms it is
+   * considered dead (a silently terminated worker emits no error event); the request
+   * rejects with `WorkerCrashedError` and the next scan performs a bounded restart.
+   * Default `DEFAULTS.scanTimeoutMs` (30 s); 0 disables.
+   */
+  scanTimeoutMs?: number;
+  /**
    * URL of the worker script. Defaults to the library-provided worker entry.
    * Consumers bundling with Vite/Angular can pass `new URL('meikiocr-web/worker', import.meta.url)`.
    */

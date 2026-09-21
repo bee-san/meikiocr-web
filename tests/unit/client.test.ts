@@ -299,4 +299,21 @@ describe("client", () => {
     const snap = await client.scan({ ...frame(), frameId: "f2" });
     expect(snap.frameId).toBe("f2");
   });
+
+  it("a worker that never replies trips the watchdog: WorkerCrashedError, then a factory restart recovers", async () => {
+    const workers: FakeWorker[] = [];
+    const client = await createMeikiOcrWithFactory({ manifest, assetBaseUrl: "https://x.test/", scanTimeoutMs: 40 }, () => {
+      const w = new FakeWorker();
+      if (workers.length === 0) w.replyMode = "never";
+      workers.push(w);
+      return w;
+    });
+    const t0 = Date.now();
+    await expect(client.scan(frame())).rejects.toBeInstanceOf(WorkerCrashedError);
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(35);
+    expect(workers[0]!.terminated).toBe(true);
+    const snap = await client.scan(frame());
+    expect(snap.frameId).toBe("f1");
+    expect(workers.length).toBe(2);
+  });
 });
